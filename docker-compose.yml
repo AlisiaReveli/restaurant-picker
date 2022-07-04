@@ -1,0 +1,30 @@
+version: '3.8'
+services:
+  db:
+    image: postgres:14.1-alpine
+    restart: always
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    ports:
+      - 5432:5432
+    environment:
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: test
+      POSTGRES_USER: postgres
+  api:
+    depends_on:
+      - db
+    build: ./server-side
+    restart: unless-stopped
+    environment:
+      TYPEORM_CONNECTION: postgresql
+      TYPEORM_HOST: db
+      TYPEORM_PORT: 5432
+      TYPEORM_USERNAME: postgres
+      TYPEORM_PASSWORD: password
+      TYPEORM_DATABASE: test
+      TYPEORM_SYNCHRONIZE: 'true'
+    ports:
+      - '5000:5000'
+volumes:
+  db_data: {}
