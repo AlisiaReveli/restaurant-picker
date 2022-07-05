@@ -2,7 +2,7 @@ import { Inject, Res, UnauthorizedException } from "@nestjs/common";
 import { UserDataDto } from "./dto/userData.dto";
 import { OAuth2Client } from 'google-auth-library';
 import { UserService } from "src/api/users/user.service";
-import * as bcrypt from 'bcrypt';
+import * as bcrypt from 'bcryptjs';
 export class AuthService {
     @Inject(UserService)
     private userService: UserService;

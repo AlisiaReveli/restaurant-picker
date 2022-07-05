@@ -7,7 +7,7 @@ import { AuthService } from "./auth.service";
 import { JwtAuthGuard } from "../guards/jwt-auth.guard";
 import { User } from "src/entities/user.entity";
 import { CurrentUser } from "../decorators/currentUser.decorator";
-import * as bcrypt from 'bcrypt';
+import * as bcrypt from 'bcryptjs';
 
 
 @ApiTags('Authentication')
