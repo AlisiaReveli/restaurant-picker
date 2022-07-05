@@ -1,4 +1,4 @@
-To start create a .env file with variables:
+To start create .env file with variables:
 ```
 TYPEORM_HOST=
 TYPEORM_PORT=
