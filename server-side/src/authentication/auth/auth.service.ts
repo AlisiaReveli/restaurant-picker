@@ -1,42 +1,48 @@
-import { Inject } from "@nestjs/common";
-import { JwtService } from '@nestjs/jwt';
-
+import { Inject, Res, UnauthorizedException } from "@nestjs/common";
+import { UserDataDto } from "./dto/userData.dto";
+import { OAuth2Client } from 'google-auth-library';
+import { UserService } from "src/api/users/user.service";
+import * as bcrypt from 'bcrypt';
 export class AuthService {
-    @Inject(JwtService)
-    private jwtService: JwtService;
+    @Inject(UserService)
+    private userService: UserService;
 
-    //     // @Inject(UserService)
-    //     // private userService: UserService;
-    //     async signup(user: RegisterUserDto) {
-    //         let createdUser: User;
+    async verifyUser(data: UserDataDto, @Res() res) {
 
-    //         try {
-    //             const foundUser = await this.userService.findOne({ email: user.email });
+        const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
+        try {
+            const ticket = await client.verifyIdToken({
+                idToken: data.googleId,
+                audience: process.env.GOOGLE_CLIENT_ID,
+            });
+            const payload = ticket.getPayload();
+            const email = payload['email'];
+            if (email === data.email) {
+                return true;
+            } else {
+                return false;
+            }
+        } catch (err) {
+            return res.status(500).json({
+                message: 'Wrong credentials'
+            });
+        }
 
-    //             if (foundUser) {
-    //                 throw new HttpException(
-    //                     {
-    //                         message: 'Input data validation failed',
-    //                         errors: { email: 'Email is already in use!' },
-    //                     },
-    //                     HttpStatus.UNPROCESSABLE_ENTITY,
-    //                 );
-    //             }
 
-    //             user.password = await bcrypt.hash(user.password, 10);
-    //             user.role = UserRole.MENTEE;
+    }
 
-    //             createdUser = await this.userService.register(user);
-    //         } catch (error) {
-    //             throw new HttpException(error.response, error.status);
-    //         }
+    async validateCredentials(email: string, password: string): Promise<any> {
+        const user = await this.userService.findOne({ email: email.toLowerCase() });
 
-    //         if (!createdUser) {
-    //             throw new HttpException(
-    //                 'Validation failed!',
-    //                 HttpStatus.UNPROCESSABLE_ENTITY,
-    //             );
-    //         }
-    //         return true;
-    //     }
+        if (!user) {
+            throw new UnauthorizedException({
+                status: 'error',
+                data: ['Email does not exist!'],
+            });
+        }
+
+        return user && (await bcrypt.compare(password, user.googleId))
+            ? user
+            : null;
+    }
 }

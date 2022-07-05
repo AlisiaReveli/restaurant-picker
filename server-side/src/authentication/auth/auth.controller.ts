@@ -1,58 +1,88 @@
-import { Body, Controller, Inject, Post, Res } from "@nestjs/common";
-import { ApiExtraModels, ApiTags } from "@nestjs/swagger";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from 'typeorm';
-import { User } from "src/entities/user.entity";
+import { Body, Controller, Get, Inject, Post, Res, UseGuards } from "@nestjs/common";
+import { ApiBearerAuth, ApiExtraModels, ApiTags } from "@nestjs/swagger";
 import { UserDataDto } from "./dto/userData.dto";
 import { JwtService } from "@nestjs/jwt";
+import { UserService } from "src/api/users/user.service";
+import { AuthService } from "./auth.service";
+import { JwtAuthGuard } from "../guards/jwt-auth.guard";
+import { User } from "src/entities/user.entity";
+import { CurrentUser } from "../decorators/currentUser.decorator";
+import * as bcrypt from 'bcrypt';
+
 
 @ApiTags('Authentication')
 @Controller('auth')
 @ApiExtraModels()
 export class AuthController {
-    @InjectRepository(User)
-    private usersRepository: Repository<User>;
     @Inject(JwtService)
     private jwtService: JwtService;
+    @Inject(UserService)
+    private userService: UserService;
+    @Inject(AuthService)
+    private authService: AuthService;
 
     @Post()
     async register(@Body() userdata: UserDataDto, @Res() res) {
-
-        const user = await this.usersRepository.findOne({
-            where: {
+        const user = await this.userService.findOne(
+            {
                 email: userdata.email,
-                googleId: userdata.googleId
             }
-        });
+        );
 
         if (user) {
-            const accessToken = this.jwtService.sign({ email: user.email, sub: user.googleId })
+            const verifyLoggedUser = await this.authService.validateCredentials(userdata.email, userdata.googleId);
+            if (verifyLoggedUser) {
 
-            return res.status(200).json({
-                accessToken
-            });
-        } else {
-
-            const user = await this.usersRepository.create({
-                email: userdata.email,
-                googleId: userdata.googleId,
-                name: userdata.name
-            });
-            await this.usersRepository.save(user);
-
-            if (user) {
-                const accessToken = this.jwtService.sign({ email: user.email, sub: user.googleId })
+                const accessToken = this.jwtService.sign({ email: user.email, sub: user.id })
 
                 return res.status(200).json({
                     accessToken
                 });
             } else {
                 return res.status(500).json({
+                    message: 'Wrong credentials'
+                });
+            }
+        } else {
+            const verifyUser = await this.authService.verifyUser(userdata, res);
+
+            if (verifyUser && verifyUser! === null) {
+                const user = await this.userService.create({
+                    email: userdata.email,
+                    googleId: await bcrypt.hash(userdata.googleId, 10),
+                    name: userdata.name
+                });
+                if (user) {
+                    const accessToken = this.jwtService.sign({ email: user.email, sub: user.id })
+
+                    return res.status(200).json({
+                        accessToken
+                    });
+                } else {
+                    return res.status(500).json({
+                        message: 'Something went wrong'
+                    });
+                }
+            } else {
+                return res.status(500).json({
                     message: 'Something went wrong'
                 });
             }
+        }
+    }
 
-
+    @UseGuards(JwtAuthGuard)
+    @ApiBearerAuth('access-token')
+    @Get('/me')
+    async getMe(@CurrentUser() user: User, @Res() res) {
+        if (user) {
+            return res.status(200).json({
+                ...user
+            });
+        } else {
+            return res.status(500).json({
+                message: 'Something went wrong'
+            });
         }
     }
 
