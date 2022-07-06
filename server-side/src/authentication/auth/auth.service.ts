@@ -8,27 +8,17 @@ export class AuthService {
     private userService: UserService;
 
     async verifyUser(data: UserDataDto, @Res() res) {
-
         const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
         try {
-            const ticket = await client.verifyIdToken({
-                idToken: data.googleId,
-                audience: process.env.GOOGLE_CLIENT_ID,
-            });
+            const ticket = await client.verifyIdToken({ idToken: data.token, audience: process.env.GOOGLE_CLIENT_ID });
             const payload = ticket.getPayload();
-            const email = payload['email'];
-            if (email === data.email) {
-                return true;
-            } else {
-                return false;
-            }
-        } catch (err) {
+            return payload || null;
+        }
+        catch (err) {
             return res.status(500).json({
                 message: 'Wrong credentials'
             });
         }
-
-
     }
 
     async validateCredentials(email: string, password: string): Promise<any> {

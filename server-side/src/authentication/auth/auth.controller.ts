@@ -23,50 +23,47 @@ export class AuthController {
 
     @Post()
     async register(@Body() userdata: UserDataDto, @Res() res) {
-        const user = await this.userService.findOne(
-            {
-                email: userdata.email,
-            }
-        );
+        const verifyUser = await this.authService.verifyUser(userdata, res);
 
-        if (user) {
-            const verifyLoggedUser = await this.authService.validateCredentials(userdata.email, userdata.googleId);
-            if (verifyLoggedUser) {
-
-                const accessToken = this.jwtService.sign({ email: user.email, sub: user.id })
-
-                return res.status(200).json({
-                    accessToken
-                });
-            } else {
-                return res.status(500).json({
-                    message: 'Wrong credentials'
-                });
-            }
+        if (verifyUser.length === 0 || verifyUser === undefined || verifyUser === null) {
+            return res.status(500).json({
+                message: 'Wrong credentials cannot authenticate with google'
+            });
         } else {
-            const verifyUser = await this.authService.verifyUser(userdata, res);
-
-            if (verifyUser && verifyUser! === null) {
-                const user = await this.userService.create({
-                    email: userdata.email,
-                    googleId: await bcrypt.hash(userdata.googleId, 10),
-                    name: userdata.name
-                });
-                if (user) {
+            const user = await this.userService.findOne(
+                {
+                    email: verifyUser.email,
+                }
+            );
+            if (user) {
+                const verifyLoggedUser = await this.authService.validateCredentials(verifyUser.email, verifyUser.sub);
+                if (verifyLoggedUser) {
                     const accessToken = this.jwtService.sign({ email: user.email, sub: user.id })
-
                     return res.status(200).json({
                         accessToken
                     });
                 } else {
                     return res.status(500).json({
-                        message: 'Something went wrong'
+                        message: 'Wrong credentials'
                     });
                 }
             } else {
-                return res.status(500).json({
-                    message: 'Something went wrong'
+                const user = await this.userService.create({
+                    email: verifyUser.email,
+                    googleId: await bcrypt.hash(verifyUser.sub, 10),
+                    name: verifyUser.given_name + ' ' + verifyUser.family_name,
+                    picture: verifyUser.picture,
                 });
+                if (user) {
+                    const accessToken = this.jwtService.sign({ email: user.email, sub: user.id });
+                    return res.status(200).json({
+                        accessToken
+                    });
+                } else {
+                    return res.status(500).json({
+                        message: 'Something went wrong cannot create user'
+                    });
+                }
             }
         }
     }

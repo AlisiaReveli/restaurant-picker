@@ -24,6 +24,9 @@ export class User {
     @Column({ name: 'email', type: 'varchar', nullable: false })
     email: string;
 
+    @Column({ name: 'picture', type: 'varchar', nullable: false })
+    picture: string;
+
     @Column({ nullable: true })
     location: string
 

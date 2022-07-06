@@ -15,7 +15,7 @@ export class UserService {
         });
     }
 
-    create(data: UserDataDto) {
+    create(data) {
         this.usersRepository.create(data);
         return this.usersRepository.save(data);
     }
