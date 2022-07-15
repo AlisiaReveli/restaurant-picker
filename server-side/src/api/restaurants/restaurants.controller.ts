@@ -13,7 +13,7 @@ import { JwtAuthGuard } from 'src/authentication/guards/jwt-auth.guard';
 import { RestaurantService } from './restaurants.service';
 
 @Controller('restaurants')
-@UseGuards(JwtAuthGuard)
+// @UseGuards(JwtAuthGuard)
 @ApiTags('Users')
 @ApiBearerAuth('access-token')
 export class RestaurantsController {
